@@ -1,0 +1,39 @@
+# The parameters are from https://github.com/pytorch/examples/blob/main/mnist/main.py
+
+device: cuda                           # cpu or cuda,if you want to specify which GPU to use, `CUDA_VISIBLE_DEVICES=X1,X2` is best.
+seed: 1234
+deterministic: True
+
+model:
+  name: mnist_utils.Net
+  args: null
+
+data:
+  name: mnist_utils.build_dataloader
+  args:
+    dataset_dir: ./data
+    batch_size: 64                     # bs of single gpu
+    test_batch_size: 1000
+
+loss_fn:
+  name: torch.nn.NLLLoss           
+  args: null                           # using default parameters
+
+optimizer:
+  name: torch.optim.Adadelta           # or import torch.optim in the main file and set name as Adadelta
+  args:
+    lr: 1.0
+
+lr_scheduler:
+  name: torch.optim.lr_scheduler.StepLR
+  args: 
+    step_size: 1
+    gamma: 0.7
+
+training_args:
+  max_epochs: 14
+  output_dir: ./output_dir
+  checkpoint_period: 1                 # save period in epochs
+  log_period: 10                       # log period in iters
+  max_num_checkpoints: 5
+  enable_amp: False                    # Automatic Mixed Precision (AMP) training
