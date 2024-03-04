@@ -1,0 +1,41 @@
+device: cuda                           # cpu or cuda, if you want to specify which GPU to use, `CUDA_VISIBLE_DEVICES=X1,X2` is best.
+seed: 1234
+deterministic: True
+
+model:
+  name: medseg.UNet
+  args:
+    input_dim: 1
+    output_dim: 2
+
+data:
+  name: medseg.get_data_loader
+  args:
+    data_root: 'data/Infection Segmentation Data'
+    batch_size: 64                     # bs of single gpu
+
+loss_fn:
+  name: medseg.DC_and_CE_loss           
+  args: 
+    n_classes: 2
+
+optimizer:
+  name: torch.optim.Adam               # or import torch.optim in the file and set name as Adam
+  args:
+    lr: 0.001
+    betas: [0.9, 0.999]
+    weight_decay: 0.0001
+
+lr_scheduler:
+  name: tup.lr_scheduler.WarmupCosineLR
+  args: 
+    warmup_epoch: 10
+    lr_factor_min: 0.01                # lr range: 0 -> lr -> lr*lr_factor_min
+
+training_args:
+  max_epochs: 100
+  output_dir: output_dir
+  checkpoint_period: 10                # save period in epochs
+  log_period: 5                        # log period in iters
+  max_num_checkpoints: 5
+  enable_amp: True                     # Automatic Mixed Precision (AMP) training
