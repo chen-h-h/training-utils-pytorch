@@ -1,6 +1,7 @@
 import argparse
 import logging
 from omegaconf import OmegaConf, DictConfig
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -16,27 +17,56 @@ class ConfigArgParser():
         self.config_parser = argparse.ArgumentParser(*args, **kwargs)
         self.config_parser.add_argument("-c", "--config", default=None, metavar="FILE", required=True, 
                                         help="Where to load YAML configuration.")
-        self.option_names = []
+        self.config_parser.add_argument("opts", default=None, nargs=argparse.REMAINDER,
+                                        help="""Modify config options at the end of the command.
+                                            Such as "path.key1=value1 path.key2=value2".""".strip())
 
     def add_argument(self, *args, **kwargs):
         """Same as :meth:`ArgumentParser.add_argument`."""
         arg = self.config_parser.add_argument(*args, **kwargs)
-        self.option_names.append(arg.dest)
         return arg
 
-    def parse_args(self) -> DictConfig:
+    def parse_args(self, *args, **kwargs) -> DictConfig:
         """The `args` is same as :meth:`ArgumentParser.parse_args`."""
-        config_cmd = self.config_parser.parse_args()
-        config_file = OmegaConf.load(config_cmd.config)
+        _args = self.config_parser.parse_args(*args, **kwargs)
+        
+        config_cmd = _args.opts
+        config_file = OmegaConf.load(_args.config)
         
         config = self.merge_config(config_file, config_cmd)
 
         return config
     
-    def merge_config(self, config_file: DictConfig, config_cmd: argparse.Namespace) -> DictConfig:
-        """Merge the config_cmd into config_file. Priority: config_cmd > config_cmd"""
-        # TODO: complete the function
+    def merge_config(self, config_file: DictConfig, config_cmd: List[str]) -> DictConfig:
+        """
+        Merge the config_cmd into config_file. Priority: config_cmd > config_file.
+        Reference https://github.com/facebookresearch/detectron2/blob/main/detectron2/config/lazy.py#L318
+
+        Args:
+            config_file: an omegaconf contents of cfg
+            config_cmd: list of strings in the format of "a=b" to override configs.
+        """
+        if config_cmd==None:
+            pass
+
+        for o in config_cmd:
+            key, value = o.split("=")
+            try:
+                value = eval(value, {})
+            except NameError:
+                pass
+            self._safe_update(config_file, key, value)
+
         return config_file
+    
+    def _safe_update(self, cfg, key, value):
+        # TODO: Do more safe checking on options from the command line
+        v = OmegaConf.select(cfg, key, default=None)
+        if v is None:
+            logging.warning(
+                f"\nTrying to update key **{key}**, but it is not "
+                f"one of the config options.\n")
+        OmegaConf.update(cfg, key, value, merge=True)
 
 def save_config(configs: DictConfig, filepath: str, rank: int = 0) -> None:
     """If in master process, save ``config`` to a YAML file. Otherwise, do nothing.
