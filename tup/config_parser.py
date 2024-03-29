@@ -55,6 +55,8 @@ class ConfigArgParser():
                 value = eval(value, {})
             except NameError:
                 pass
+            except SyntaxError:
+                pass
             self._safe_update(config_file, key, value)
 
         return config_file
