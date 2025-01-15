@@ -34,7 +34,12 @@ class ConfigArgParser():
         config_file = OmegaConf.load(_args.config)
         
         config = self.merge_config(config_file, config_cmd)
-
+        
+        # merge other parameters that added by `add_argument()` 
+        for key, value in vars(_args).items():
+            if key not in ["opts", "config"]:
+                OmegaConf.update(config, key, value, merge=True)
+        
         return config
     
     def merge_config(self, config_file: DictConfig, config_cmd: List[str]) -> DictConfig:
